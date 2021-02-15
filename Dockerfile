@@ -8,6 +8,9 @@ RUN sh -c 'echo "deb [ arch=amd64 ] http://packages.dataspeedinc.com/ros/ubuntu 
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys FF6D3CDA
 RUN apt-get update
 
+# Install helper tools
+RUN apt-get install -y htop vim
+
 # setup rosdep
 RUN sh -c 'echo "yaml http://packages.dataspeedinc.com/ros/ros-public-'$ROS_DISTRO'.yaml '$ROS_DISTRO'" > /etc/ros/rosdep/sources.list.d/30-dataspeed-public-'$ROS_DISTRO'.list'
 RUN rosdep update
