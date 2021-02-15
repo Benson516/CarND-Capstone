@@ -68,6 +68,8 @@ class WaypointUpdater(object):
         # Get "1" closest point's index. Note: return of the query() is (point, idx)
         closest_idx = self.waypoint_tree.query([x,y], 1)[1]
 
+        # print("closest_idx = %d" % closest_idx)
+
         # Check if the closest is ahead or behind the vehicle
         closest_coord = self.waypoints_2d[closest_idx]
         prev_coord = self.waypoints_2d[closest_idx-1]
@@ -81,6 +83,7 @@ class WaypointUpdater(object):
 
         if val > 0:
             # The closest is behind the vehicle
+            # print("The closest waypoint is behind the vehicle, use the next point.")
             closest_idx = (closest_idx+1) % len(self.waypoints_2d)
         return closest_idx
 
@@ -89,12 +92,13 @@ class WaypointUpdater(object):
         """
         lane = Lane()
         lane.header = self.base_waypoints.header
-        lane.waypoints = self.base_waypoints.waypoints[closest_idx:closest_idx + LOOKAHEAD_WPS]
+        lane.waypoints = self.base_waypoints.waypoints[closest_idx:(closest_idx + LOOKAHEAD_WPS)]
         self.final_waypoints_pub.publish(lane)
 
     def pose_cb(self, msg):
         # TODO: Implement
         self.pose = msg
+        # print("self.pose = %s" % str(self.pose))
 
     def waypoints_cb(self, waypoints):
         # TODO: Implement
@@ -102,6 +106,7 @@ class WaypointUpdater(object):
         if not self.waypoints_2d:
             self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
             self.waypoint_tree = KDTree(self.waypoints_2d)
+            print("len(self.waypoints_2d) = %d" % len(self.waypoints_2d))
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
