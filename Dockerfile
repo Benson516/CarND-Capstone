@@ -17,7 +17,9 @@ RUN apt-get upgrade -y
 
 # install python packages
 RUN apt-get install -y python-pip
-RUN pip install --upgrade pip
+# Upgrade pip to version 20.3.4 (2021/1/23). 
+# Note: Don't upgrade to version 21.x
+RUN pip install --upgrade pip==20.3.4  
 COPY requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
