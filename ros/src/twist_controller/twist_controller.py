@@ -1,14 +1,38 @@
-
+import rospy
+from yaw_controller import YawController
+from lowpass import LowPassFilter
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
 
 
 class Controller(object):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, param_dict):
         # TODO: Implement
-        pass
+        self.yaw_controller = YawController(param_dict["wheel_base"],
+                                            param_dict["steer_ratio"],
+                                            0.1,
+                                            param_dict["max_lat_accel"],
+                                            param_dict["max_steer_angle"])
+        
+        kp = 0.3
+        ki = 0.1
+        kd = 0.0
+        mn = 0.0 # Minimum throttle value
+        mx = 0.2 # Maximum throttle value
+        self.throttle_controller = PID(kp, ki, kd, mn, mx)
 
-    def control(self, *args, **kwargs):
+        tau = 0.5 # 1/(2pi*tau) = cutoff frequency
+        ts = 0.02 # Sample time
+        self.vel_lpf = LowPassFilter(tau, ts)
+
+        # Parameters
+        #------------------------------#
+        #------------------------------#
+
+        self.last_time = rospy.get_time()
+
+
+    def control(self, current_vel, dbw_enabled, linear_vel, angular_vel):
         # TODO: Change the arg, kwarg list to suit your needs
         # Return throttle, brake, steer
         return 1., 0., 0.
