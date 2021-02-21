@@ -27,6 +27,12 @@ class Controller(object):
 
         # Parameters
         #------------------------------#
+        self.vehicle_mass = param_dict["vehicle_mass"]
+        self.fuel_capacity = param_dict["fuel_capacity"]
+        self.brake_deadband = param_dict["brake_deadband"]
+        self.decel_limit = param_dict["decel_limit"]
+        self.accel_limit = param_dict["accel_limit"]
+        self.wheel_radius = param_dict["wheel_radius"]
         #------------------------------#
 
         self.last_time = rospy.get_time()
