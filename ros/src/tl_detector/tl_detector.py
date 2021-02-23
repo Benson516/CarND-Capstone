@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+from scipy.spatial import KDTree
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -49,6 +50,11 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
+        # Variables
+        self.base_waypoints = None
+        self.waypoints_2d   = None
+        self.waypoint_tree  = None
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -56,6 +62,10 @@ class TLDetector(object):
 
     def waypoints_cb(self, waypoints):
         self.waypoints = waypoints
+        if not self.waypoints_2d:
+            self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints.waypoints]
+            self.waypoint_tree = KDTree(self.waypoints_2d)
+            print("len(self.waypoints_2d) = %d" % len(self.waypoints_2d))
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -101,6 +111,9 @@ class TLDetector(object):
 
         """
         #TODO implement
+        x = pose.position.x
+        y = pose.position.y
+        closest_idx = self.waypoint_tree.query([x,y], 1)[1]
         return 0
 
     def get_light_state(self, light):
@@ -143,7 +156,7 @@ class TLDetector(object):
         if light:
             state = self.get_light_state(light)
             return light_wp, state
-        self.waypoints = None
+        # self.waypoints = None
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
