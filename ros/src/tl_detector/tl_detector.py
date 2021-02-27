@@ -161,7 +161,7 @@ class TLDetector(object):
                 line = stop_line_positions[i] # Note: this is loaded from config
                 tmp_wp_idx = self.get_closest_waypoint(line[0], line[1])
                 # Find closest stop line waypoint index
-                d = temp_wp_idx - car_wp_idx
+                d = tmp_wp_idx - car_wp_idx
                 if d >= 0 and d < diff:
                     # Found a closer frontal light (stop line)
                     diff = d
