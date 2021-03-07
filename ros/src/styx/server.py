@@ -49,7 +49,10 @@ def trafficlights(sid, data):
 
 @sio.on('image')
 def image(sid, data):
+    _t_s = time.time()
     bridge.publish_camera(data)
+    _d_1 = time.time() - _t_s
+    print("_d_1 = %f" % _d_1)
 
 if __name__ == '__main__':
 
