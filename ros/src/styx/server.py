@@ -9,6 +9,9 @@ import time
 from bridge import Bridge
 from conf import conf
 
+#
+import threading
+
 sio = socketio.Server(async_mode='gevent')
 msgs = []
 
@@ -29,7 +32,10 @@ def telemetry(sid, data):
     if data["dbw_enable"] != dbw_enable:
         dbw_enable = data["dbw_enable"]
         bridge.publish_dbw_status(dbw_enable)
-    bridge.publish_odometry(data)
+    # bridge.publish_odometry(data)
+    _t = threading.Thread(target=bridge.publish_odometry, args=(data,) )
+    # _t.daemon = True
+    _t.start()
 
 @sio.on('control')
 def control(sid, data):
@@ -49,10 +55,13 @@ def trafficlights(sid, data):
 
 @sio.on('image')
 def image(sid, data):
-    _t_s = time.time()
-    bridge.publish_camera(data)
-    _d_1 = time.time() - _t_s
-    print("_d_1 = %f" % _d_1)
+    # _t_s = time.time()
+    # bridge.publish_camera(data)
+    # _d_1 = time.time() - _t_s
+    # print("_d_1 = %f" % _d_1)
+    _t = threading.Thread(target=bridge.publish_camera, args=(data,) )
+    # _t.daemon = True
+    _t.start()
 
 if __name__ == '__main__':
 
