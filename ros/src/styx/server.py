@@ -56,12 +56,13 @@ def trafficlights(sid, data):
 @sio.on('image')
 def image(sid, data):
     # _t_s = time.time()
-    # bridge.publish_camera(data)
+    bridge.publish_camera(data)
     # _d_1 = time.time() - _t_s
     # print("_d_1 = %f" % _d_1)
-    _t = threading.Thread(target=bridge.publish_camera, args=(data,) )
-    # _t.daemon = True
-    _t.start()
+    #
+    # _t = threading.Thread(target=bridge.publish_camera, args=(data,) )
+    # # _t.daemon = True
+    # _t.start()
 
 if __name__ == '__main__':
 

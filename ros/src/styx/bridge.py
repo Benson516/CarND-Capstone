@@ -201,27 +201,27 @@ class Bridge(object):
 
     def callback_path(self, data):
 
-        _t = threading.Thread(target=self._path_sending_worker, args=(data,) )
-        # _t.daemon = True
-        _t.start()
-        
-        # # _t_s = time.time()
-        # #------------------------#
-        # x_values = []
-        # y_values = []
-        # z_values = []
-        # for waypoint in data.waypoints:
-        #     x = waypoint.pose.pose.position.x
-        #     y = waypoint.pose.pose.position.y
-        #     z = waypoint.pose.pose.position.z+0.5
-        #     x_values.append(x)
-        #     y_values.append(y)
-        #     z_values.append(z)
-            
-        # # _d_1 = time.time() - _t_s
-        # # print("_d_1 = %f" % _d_1)
+        # _t = threading.Thread(target=self._path_sending_worker, args=(data,) )
+        # # _t.daemon = True
+        # _t.start()
 
-        # self.server('drawline', data={'next_x': x_values, 'next_y': y_values, 'next_z': z_values})
+        # _t_s = time.time()
+        #------------------------#
+        x_values = []
+        y_values = []
+        z_values = []
+        for waypoint in data.waypoints:
+            x = waypoint.pose.pose.position.x
+            y = waypoint.pose.pose.position.y
+            z = waypoint.pose.pose.position.z+0.5
+            x_values.append(x)
+            y_values.append(y)
+            z_values.append(z)
+
+        # _d_1 = time.time() - _t_s
+        # print("_d_1 = %f" % _d_1)
+
+        self.server('drawline', data={'next_x': x_values, 'next_y': y_values, 'next_z': z_values})
 
 
     def _path_sending_worker(self, data):
@@ -239,9 +239,8 @@ class Bridge(object):
             x_values.append(x)
             y_values.append(y)
             z_values.append(z)
-            
+
         # _d_1 = time.time() - _t_s
         # print("_d_1 = %f" % _d_1)
 
         self.server('drawline', data={'next_x': x_values, 'next_y': y_values, 'next_z': z_values})
-
