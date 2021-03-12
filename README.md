@@ -26,8 +26,22 @@ docker build . -t capstone
 ```
 
 Run the docker file
+
+**Windows**
 ```bash
-docker run -p 4567:4567 -v "$(PWD):/capstone" -v /tmp/log:/root/.ros/ --rm -it capstone
+$ docker run -p 4567:4567 -v "$(PWD):/capstone" -v /tmp/log:/root/.ros/ --rm -it capstone
+```
+
+**Linux**
+```bash
+$ sudo docker run -p 4567:4567 -v "$(pwd):/capstone" -v /tmp/log:/root/.ros/ --rm -it capstone
+```
+
+Interact with the container in another terminal
+
+(Note: In linux, all the command should be executed with superuser privileges, i.e. `sudo`)
+```bash
+$ docker exec -it <container_ID> bash
 ```
 
 ### Port Forwarding
