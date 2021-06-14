@@ -11,7 +11,16 @@ import tf
 import cv2
 import yaml
 from scipy.spatial import KDTree
+#
 import numpy as np
+from tf.transformations import (
+    quaternion_matrix, 
+    quaternion_from_matrix, 
+    # quaternion_from_euler, 
+    # euler_from_quaternion, 
+    # quaternion_multiply
+)
+
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -69,6 +78,7 @@ class TLDetector(object):
         self.tl_data_count = 0
         # Camera intrinsic matrix (Ground truth)
         f_camera = 1345.0
+        # f_camera = 100
         #
         fx_camera = f_camera
         fy_camera = f_camera
@@ -76,6 +86,8 @@ class TLDetector(object):
         yo_camera = 600/2.0
         self.np_K_camera_est = np.array([[fx_camera, 0.0, xo_camera], [0.0, fy_camera, yo_camera], [0.0, 0.0, 1.0]]) # Estimated
         print("np_K_camera_est = \n%s" % str(self.np_K_camera_est))
+        #
+        self.R_car_at_camera = np.array([[0., -1., 0.], [0., 0., -1.], [1., 0., 0.]])
 
         rospy.spin()
 
@@ -136,6 +148,56 @@ class TLDetector(object):
         closest_idx = self.waypoint_tree.query([x,y], 1)[1]
         return closest_idx
 
+    def get_relative_pose(self, pose_obj, pose_ref):
+        '''
+        Calculate the transformation between the object and the reference frame
+        Specifically, the object pose represents in reference frame.
+        '''
+        point_obj = np.array( (pose_obj.position.x, pose_obj.position.y, pose_obj.position.z) ).reshape((3,1))
+        point_ref = np.array( (pose_ref.position.x, pose_ref.position.y, pose_ref.position.z) ).reshape((3,1))
+        q_obj = (pose_obj.orientation.x, pose_obj.orientation.y, pose_obj.orientation.z, pose_obj.orientation.w)
+        q_ref = (pose_ref.orientation.x, pose_ref.orientation.y, pose_ref.orientation.z, pose_ref.orientation.w)
+        #
+        T_obj = quaternion_matrix(q_obj) # 4x4 matrix
+        T_ref = quaternion_matrix(q_ref)
+        # T_id = quaternion_matrix([0.0, 0.0, 0.0, 1.0])
+        # print("T_obj = \n%s" % T_obj)
+        # print("T_ref = \n%s" % T_ref)
+        # print("R_id = \n%s" % R_id)
+        #
+        T_obj[0:3,3:] = point_obj
+        T_ref[0:3,3:] = point_ref
+        # T_rel = T_wold_at_ref * T_obj_at_world --> T_rel = T_ref^-1 * T_obj
+        T_rel = (np.linalg.inv(T_ref)).dot(T_obj)
+
+        print("T_obj = \n%s" % T_obj)
+        print("T_ref = \n%s" % T_ref)
+        print("T_rel = \n%s" % T_rel)
+
+        R_rel = T_rel[0:3,0:3]
+        t_rel = T_rel[0:3,3:4]
+        # q_rel = quaternion_from_matrix(R_rel)
+        return (T_rel, R_rel, t_rel)
+
+    def perspective_projection(self, R_tl_at_car, t_tl_at_car, point_at_tl_list):
+        '''
+        This function help project the points represented in traffic light local frame onto the image
+        '''
+        _R_tl_at_camera = self.R_car_at_camera.dot(R_tl_at_car)
+        _t_tl_at_camera = self.R_car_at_camera.dot(t_tl_at_car)
+        projection_list = list()
+        for _p_3D_at_tl in point_at_tl_list:
+            #
+            _point_3D_at_tl = np.array(_p_3D_at_tl).reshape((3,1))
+            _point_3D_at_camera = _R_tl_at_camera.dot(_point_3D_at_tl) + _t_tl_at_camera
+            _ray = self.np_K_camera_est.dot( _point_3D_at_camera )
+            _projection = (_ray / abs(_ray[2,0]))[:2,0]
+            print("_projection = \n%s" % _projection)
+            projection_list.append(_projection)
+        return projection_list
+
+
+
     def get_light_state(self, light):
         """Determines the current color of the traffic light
 
@@ -173,21 +235,29 @@ class TLDetector(object):
             # Count the image
             self.tl_data_count += 1
 
+            print("--- tl_data_count = %d ---" % self.tl_data_count)
             # Try to get the bounding box
-            print("light.pose = %s" % light.pose)
+            print("light.pose = \n%s" % light.pose)
+            print("self.pose = \n%s" % self.pose)
+
+
             # Perspective projection
-            # _light_center_point = np.array([light.pose.pose.position.x, light.pose.pose.position.y, light.pose.pose.position.z]).reshape((3,1))
-            
-
-
-            # TODO: Calculate the relative pose of light at car
-            _light_center_point_at_car = np.ones((3,1))
-
-
-
-            _ray = self.np_K_camera_est.dot( _light_center_point_at_car)
-            _projection = (_ray / abs(_ray[2,0]))[:2,0]
-            print("_projection = \n%s" % _projection)
+            #---------------------------------#
+            # Calculate the relative pose of light at car
+            T_rel, R_tl_at_car, t_tl_at_car = self.get_relative_pose(light.pose.pose, self.pose.pose)
+            print("R_tl_at_car = \n%s" % R_tl_at_car)
+            print("t_tl_at_car = \n%s" % t_tl_at_car)
+            #
+            # _light_center_point_at_camera = self.R_car_at_camera.dot(t_tl_at_car)
+            # print("_light_center_point_at_camera = \n%s" % _light_center_point_at_camera)
+            #
+            # _ray = self.np_K_camera_est.dot( _light_center_point_at_camera)
+            # _projection = (_ray / abs(_ray[2,0]))[:2,0]
+            # print("_projection = \n%s" % _projection)
+            point_at_tl_list = list()
+            point_at_tl_list.append([0., 0., 0.])
+            projection_list = self.perspective_projection(R_tl_at_car, t_tl_at_car, point_at_tl_list)
+            #---------------------------------#
 
             # TODO: Generate the bounding box
             # TODO: TRy drawing the boundinf box on the image
