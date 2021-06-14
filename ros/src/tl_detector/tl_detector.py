@@ -14,6 +14,15 @@ from scipy.spatial import KDTree
 
 STATE_COUNT_THRESHOLD = 3
 
+# Data collection
+#--------------------------------#
+is_collecting_traffic_data = True
+# is_collecting_traffic_data = False
+data_dir_str = "/capstone/traffic_light_data/"
+file_prefix = "tl"
+tl_data_count = 0
+#--------------------------------#
+
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector')
@@ -124,18 +133,39 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        # For testing, simply return the light state (for simulation only)
-        return light.state
+        '''
+        Since the process is quit similar for collecting traffic light data 
+        (i.e. find the closest light, its location, and its state), 
+        I reuse the code for data collecting.
+        '''
+        if not is_collecting_traffic_data:
+            # For testing, simply return the light state (for simulation only)
+            return light.state
 
-        # # The Following codes are for classification
-        # if(not self.has_image):
-        #     self.prev_light_loc = None
-        #     return False
+            # # The Following codes are for classification
+            # if(not self.has_image):
+            #     self.prev_light_loc = None
+            #     return False
 
-        # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        # #Get classification
-        # return self.light_classifier.get_classification(cv_image)
+            # #Get classification
+            # return self.light_classifier.get_classification(cv_image)
+        else:
+            # Collect traffic image, location (bounding box), and state
+            if(not self.has_image):
+                self.prev_light_loc = None
+                return False
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            # Count the image
+            tl_data_count += 1
+
+            # Store the image
+            file_name = file_prefix + ("_%4d_%d" % (tl_data_count, light.state)) + ".png"
+            data_path_str = data_dir_str + file_name
+            cv2.imwrite(data_path_str, cv_image )
+            #
+            return light.state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
