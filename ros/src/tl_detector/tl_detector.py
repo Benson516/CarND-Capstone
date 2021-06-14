@@ -63,6 +63,8 @@ class TLDetector(object):
         self.base_waypoints = None
         self.waypoints_2d   = None
         self.waypoint_tree  = None
+        # Data collection
+        self.tl_data_count = 0
 
         rospy.spin()
 
@@ -158,11 +160,11 @@ class TLDetector(object):
                 return False
             cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
             # Count the image
-            tl_data_count += 1
+            self.tl_data_count += 1
 
             # Store the image
-            file_name = file_prefix + ("_%4d_%d" % (tl_data_count, light.state)) + ".png"
-            data_path_str = data_dir_str + file_name
+            _file_name = file_prefix + ("_%4d_%d" % (self.tl_data_count, light.state)) + ".png"
+            data_path_str = data_dir_str + _file_name
             cv2.imwrite(data_path_str, cv_image )
             #
             return light.state
