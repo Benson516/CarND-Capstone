@@ -163,7 +163,7 @@ class TLDetector(object):
             self.tl_data_count += 1
 
             # Store the image
-            _file_name = file_prefix + ("_%4d_%d" % (self.tl_data_count, light.state)) + ".png"
+            _file_name = file_prefix + ("_%.4d_%d" % (self.tl_data_count, light.state)) + ".png"
             data_path_str = data_dir_str + _file_name
             cv2.imwrite(data_path_str, cv_image )
             #
