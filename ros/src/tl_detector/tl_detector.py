@@ -16,6 +16,7 @@ import numpy as np
 from tf.transformations import (
     quaternion_matrix, 
     quaternion_from_matrix, 
+    euler_matrix,
     # quaternion_from_euler, 
     # euler_from_quaternion, 
     # quaternion_multiply
@@ -77,17 +78,18 @@ class TLDetector(object):
         # Data collection
         self.tl_data_count = 0
         # Camera intrinsic matrix (Ground truth)
-        f_camera = 1345.0
+        f_camera = 1345.0 # 1.2
         # f_camera = 100
         #
-        fx_camera = f_camera
-        fy_camera = f_camera
+        fx_camera = f_camera * 1.6
+        fy_camera = f_camera * 1.35
         xo_camera = 800/2.0
         yo_camera = 600/2.0
         self.np_K_camera_est = np.array([[fx_camera, 0.0, xo_camera], [0.0, fy_camera, yo_camera], [0.0, 0.0, 1.0]]) # Estimated
         print("np_K_camera_est = \n%s" % str(self.np_K_camera_est))
         #
-        self.R_car_at_camera = np.array([[0., -1., 0.], [0., 0., -1.], [1., 0., 0.]])
+        self.R_camera_fixer_at_car = euler_matrix(0.0, np.deg2rad(-10.0), 0.0, 'rzyx')
+        self.R_car_at_camera = np.array([[0., -1., 0.], [0., 0., -1.], [1., 0., 0.]]).dot(self.R_camera_fixer_at_car[0:3,0:3].T)
 
         rospy.spin()
 
