@@ -170,9 +170,9 @@ class TLDetector(object):
         # T_rel = T_wold_at_ref * T_obj_at_world --> T_rel = T_ref^-1 * T_obj
         T_rel = (np.linalg.inv(T_ref)).dot(T_obj)
 
-        print("T_obj = \n%s" % T_obj)
-        print("T_ref = \n%s" % T_ref)
-        print("T_rel = \n%s" % T_rel)
+        # print("T_obj = \n%s" % T_obj)
+        # print("T_ref = \n%s" % T_ref)
+        # print("T_rel = \n%s" % T_rel)
 
         R_rel = T_rel[0:3,0:3]
         t_rel = T_rel[0:3,3:4]
@@ -247,20 +247,20 @@ class TLDetector(object):
             T_rel, R_tl_at_car, t_tl_at_car = self.get_relative_pose(light.pose.pose, self.pose.pose)
             print("R_tl_at_car = \n%s" % R_tl_at_car)
             print("t_tl_at_car = \n%s" % t_tl_at_car)
-            #
-            # _light_center_point_at_camera = self.R_car_at_camera.dot(t_tl_at_car)
-            # print("_light_center_point_at_camera = \n%s" % _light_center_point_at_camera)
-            #
-            # _ray = self.np_K_camera_est.dot( _light_center_point_at_camera)
-            # _projection = (_ray / abs(_ray[2,0]))[:2,0]
-            # print("_projection = \n%s" % _projection)
+
+            # TODO: Generate the bounding box
             point_at_tl_list = list()
             point_at_tl_list.append([0., 0., 0.])
             projection_list = self.perspective_projection(R_tl_at_car, t_tl_at_car, point_at_tl_list)
             #---------------------------------#
 
-            # TODO: Generate the bounding box
-            # TODO: TRy drawing the boundinf box on the image
+            
+            # TODO: Try drawing the boundinf box on the image
+            for _p in projection_list:
+                _center_pixel = tuple( _p.astype('int') )
+                _radius = 10
+                _color = (255, 0, 0) # BGR
+                cv2.circle(cv_image, _center_pixel, _radius, _color, -1)
 
             # Store the image
             _file_name = file_prefix + ("_%.4d_%d" % (self.tl_data_count, light.state)) + ".png"
