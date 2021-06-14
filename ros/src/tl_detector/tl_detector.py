@@ -11,6 +11,7 @@ import tf
 import cv2
 import yaml
 from scipy.spatial import KDTree
+import numpy as np
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -63,8 +64,18 @@ class TLDetector(object):
         self.base_waypoints = None
         self.waypoints_2d   = None
         self.waypoint_tree  = None
+
         # Data collection
         self.tl_data_count = 0
+        # Camera intrinsic matrix (Ground truth)
+        f_camera = 1345.0
+        #
+        fx_camera = f_camera
+        fy_camera = f_camera
+        xo_camera = 800/2.0
+        yo_camera = 600/2.0
+        self.np_K_camera_est = np.array([[fx_camera, 0.0, xo_camera], [0.0, fy_camera, yo_camera], [0.0, 0.0, 1.0]]) # Estimated
+        print("np_K_camera_est = \n%s" % str(self.np_K_camera_est))
 
         rospy.spin()
 
@@ -161,6 +172,25 @@ class TLDetector(object):
             cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
             # Count the image
             self.tl_data_count += 1
+
+            # Try to get the bounding box
+            print("light.pose = %s" % light.pose)
+            # Perspective projection
+            # _light_center_point = np.array([light.pose.pose.position.x, light.pose.pose.position.y, light.pose.pose.position.z]).reshape((3,1))
+            
+
+
+            # TODO: Calculate the relative pose of light at car
+            _light_center_point_at_car = np.ones((3,1))
+
+
+
+            _ray = self.np_K_camera_est.dot( _light_center_point_at_car)
+            _projection = (_ray / abs(_ray[2,0]))[:2,0]
+            print("_projection = \n%s" % _projection)
+
+            # TODO: Generate the bounding box
+            # TODO: TRy drawing the boundinf box on the image
 
             # Store the image
             _file_name = file_prefix + ("_%.4d_%d" % (self.tl_data_count, light.state)) + ".png"
