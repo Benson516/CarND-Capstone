@@ -11,8 +11,28 @@ import tf
 import cv2
 import yaml
 from scipy.spatial import KDTree
+#
+import numpy as np
+from tf.transformations import (
+    quaternion_matrix, 
+    quaternion_from_matrix, 
+    euler_matrix,
+    # quaternion_from_euler, 
+    # euler_from_quaternion, 
+    # quaternion_multiply
+)
+
 
 STATE_COUNT_THRESHOLD = 3
+
+# Data collection
+#--------------------------------#
+# is_collecting_traffic_data = True
+is_collecting_traffic_data = False
+data_dir_str = "/capstone/traffic_light_data/"
+file_prefix = "tl"
+tl_data_count = 0
+#--------------------------------#
 
 class TLDetector(object):
     def __init__(self):
@@ -54,6 +74,24 @@ class TLDetector(object):
         self.base_waypoints = None
         self.waypoints_2d   = None
         self.waypoint_tree  = None
+
+        # Data collection
+        self.tl_data_collection_period = 0.5 # sec.
+        self.tl_data_count = 0
+        self.tl_last_collect_stamp = rospy.get_rostime()
+        # Camera intrinsic matrix (Ground truth)
+        f_camera = 1345.0 # 1.2
+        # f_camera = 100
+        #
+        fx_camera = f_camera * 1.6
+        fy_camera = f_camera * 1.35
+        xo_camera = 800/2.0
+        yo_camera = 600/2.0
+        self.np_K_camera_est = np.array([[fx_camera, 0.0, xo_camera], [0.0, fy_camera, yo_camera], [0.0, 0.0, 1.0]]) # Estimated
+        print("np_K_camera_est = \n%s" % str(self.np_K_camera_est))
+        #
+        self.R_camera_fixer_at_car = euler_matrix(0.0, np.deg2rad(-10.0), 0.0, 'rzyx')
+        self.R_car_at_camera = np.array([[0., -1., 0.], [0., 0., -1.], [1., 0., 0.]]).dot(self.R_camera_fixer_at_car[0:3,0:3].T)
 
         rospy.spin()
 
@@ -114,6 +152,56 @@ class TLDetector(object):
         closest_idx = self.waypoint_tree.query([x,y], 1)[1]
         return closest_idx
 
+    def get_relative_pose(self, pose_obj, pose_ref):
+        '''
+        Calculate the transformation between the object and the reference frame
+        Specifically, the object pose represents in reference frame.
+        '''
+        point_obj = np.array( (pose_obj.position.x, pose_obj.position.y, pose_obj.position.z) ).reshape((3,1))
+        point_ref = np.array( (pose_ref.position.x, pose_ref.position.y, pose_ref.position.z) ).reshape((3,1))
+        q_obj = (pose_obj.orientation.x, pose_obj.orientation.y, pose_obj.orientation.z, pose_obj.orientation.w)
+        q_ref = (pose_ref.orientation.x, pose_ref.orientation.y, pose_ref.orientation.z, pose_ref.orientation.w)
+        #
+        T_obj = quaternion_matrix(q_obj) # 4x4 matrix
+        T_ref = quaternion_matrix(q_ref)
+        # T_id = quaternion_matrix([0.0, 0.0, 0.0, 1.0])
+        # print("T_obj = \n%s" % T_obj)
+        # print("T_ref = \n%s" % T_ref)
+        # print("R_id = \n%s" % R_id)
+        #
+        T_obj[0:3,3:] = point_obj
+        T_ref[0:3,3:] = point_ref
+        # T_rel = T_wold_at_ref * T_obj_at_world --> T_rel = T_ref^-1 * T_obj
+        T_rel = (np.linalg.inv(T_ref)).dot(T_obj)
+
+        # print("T_obj = \n%s" % T_obj)
+        # print("T_ref = \n%s" % T_ref)
+        # print("T_rel = \n%s" % T_rel)
+
+        R_rel = T_rel[0:3,0:3]
+        t_rel = T_rel[0:3,3:4]
+        # q_rel = quaternion_from_matrix(R_rel)
+        return (T_rel, R_rel, t_rel)
+
+    def perspective_projection(self, R_tl_at_car, t_tl_at_car, point_at_tl_list):
+        '''
+        This function help project the points represented in traffic light local frame onto the image
+        '''
+        _R_tl_at_camera = self.R_car_at_camera.dot(R_tl_at_car)
+        _t_tl_at_camera = self.R_car_at_camera.dot(t_tl_at_car)
+        projection_list = list()
+        for _p_3D_at_tl in point_at_tl_list:
+            #
+            _point_3D_at_tl = np.array(_p_3D_at_tl).reshape((3,1))
+            _point_3D_at_camera = _R_tl_at_camera.dot(_point_3D_at_tl) + _t_tl_at_camera
+            _ray = self.np_K_camera_est.dot( _point_3D_at_camera )
+            _projection = (_ray / abs(_ray[2,0]))[:2,0]
+            print("_projection = \n%s" % _projection)
+            projection_list.append(_projection)
+        return projection_list
+
+
+
     def get_light_state(self, light):
         """Determines the current color of the traffic light
 
@@ -124,18 +212,87 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        # For testing, simply return the light state (for simulation only)
-        return light.state
+        '''
+        Since the process is quit similar for collecting traffic light data 
+        (i.e. find the closest light, its location, and its state), 
+        I reuse the code for data collecting.
+        '''
+        if not is_collecting_traffic_data:
+            # For testing, simply return the light state (for simulation only)
+            return light.state
 
-        # # The Following codes are for classification
-        # if(not self.has_image):
-        #     self.prev_light_loc = None
-        #     return False
+            # # The Following codes are for classification
+            # if(not self.has_image):
+            #     self.prev_light_loc = None
+            #     return False
 
-        # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            # cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        # #Get classification
-        # return self.light_classifier.get_classification(cv_image)
+            # #Get classification
+            # return self.light_classifier.get_classification(cv_image)
+        else:
+            # Collect traffic image, location (bounding box), and state
+            if(not self.has_image):
+                self.prev_light_loc = None
+                return False
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+
+            # Jump through some images
+            #--------------------------#
+            _current_stamp = rospy.get_rostime()
+            if (_current_stamp - self.tl_last_collect_stamp).to_sec() < self.tl_data_collection_period:
+                return light.state
+            # else
+            self.tl_last_collect_stamp = _current_stamp
+            #--------------------------#
+
+            # Count the image
+            self.tl_data_count += 1
+            print("--- tl_data_count = %d ---" % self.tl_data_count)
+            # Try to get the bounding box
+            print("light.pose = \n%s" % light.pose)
+            print("self.pose = \n%s" % self.pose)
+
+
+            # Calculate relative pose
+            #---------------------------------#
+            # Calculate the relative pose of light at car
+            T_rel, R_tl_at_car, t_tl_at_car = self.get_relative_pose(light.pose.pose, self.pose.pose)
+            print("R_tl_at_car = \n%s" % R_tl_at_car)
+            print("t_tl_at_car = \n%s" % t_tl_at_car)
+
+            # If it's too far, ignore
+            if t_tl_at_car[0] > 100:
+                return light.state
+
+            # Perspective projection
+            #---------------------------------#
+            # TODO: Generate the bounding box
+            point_at_tl_list = list()
+            point_at_tl_list.append([0., 0., 0.])
+            #
+            point_at_tl_list.append([0., 0.15, 0.0])
+            point_at_tl_list.append([0., 0.15, 0.5])
+            point_at_tl_list.append([0., 0.-15, 0.5])
+            point_at_tl_list.append([0., 0.-15, 0.0])
+            #
+            projection_list = self.perspective_projection(R_tl_at_car, t_tl_at_car, point_at_tl_list)
+            #---------------------------------#
+
+            
+            # TODO: Try drawing the boundinf box on the image
+            for _p in projection_list:
+                _center_pixel = tuple( _p.astype('int') )
+                _radius = 10
+                _color = (255, 0, 0) # BGR
+                cv2.circle(cv_image, _center_pixel, _radius, _color, -1)
+
+            # Store the image
+            _file_name = file_prefix + ("_%.4d_%d" % (self.tl_data_count, light.state)) + ".png"
+            data_path_str = data_dir_str + _file_name
+            cv2.imwrite(data_path_str, cv_image )
+            #
+            return light.state
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its

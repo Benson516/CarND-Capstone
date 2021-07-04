@@ -8,3 +8,6 @@ profile.tmp
 # Ignore the root CMakeLists.txt, 
 # which will be auto-generated (linked) by catkin_make
 ros/src/CMakeLists.txt
+
+
+traffic_light_data/*.png
