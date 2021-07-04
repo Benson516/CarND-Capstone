@@ -27,8 +27,8 @@ STATE_COUNT_THRESHOLD = 3
 
 # Data collection
 #--------------------------------#
-is_collecting_traffic_data = True
-# is_collecting_traffic_data = False
+# is_collecting_traffic_data = True
+is_collecting_traffic_data = False
 data_dir_str = "/capstone/traffic_light_data/"
 file_prefix = "tl"
 tl_data_count = 0
