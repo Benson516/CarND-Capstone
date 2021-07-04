@@ -270,6 +270,12 @@ class TLDetector(object):
             # TODO: Generate the bounding box
             point_at_tl_list = list()
             point_at_tl_list.append([0., 0., 0.])
+            #
+            point_at_tl_list.append([0., 0.15, 0.0])
+            point_at_tl_list.append([0., 0.15, 0.5])
+            point_at_tl_list.append([0., 0.-15, 0.5])
+            point_at_tl_list.append([0., 0.-15, 0.0])
+            #
             projection_list = self.perspective_projection(R_tl_at_car, t_tl_at_car, point_at_tl_list)
             #---------------------------------#
 
