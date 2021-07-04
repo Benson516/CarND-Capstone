@@ -88,7 +88,7 @@ class TLDetector(object):
         xo_camera = 800/2.0
         yo_camera = 600/2.0
         self.np_K_camera_est = np.array([[fx_camera, 0.0, xo_camera], [0.0, fy_camera, yo_camera], [0.0, 0.0, 1.0]]) # Estimated
-        print("np_K_camera_est = \n%s" % str(self.np_K_camera_est))
+        # print("np_K_camera_est = \n%s" % str(self.np_K_camera_est))
         #
         self.R_camera_fixer_at_car = euler_matrix(0.0, np.deg2rad(-10.0), 0.0, 'rzyx')
         self.R_car_at_camera = np.array([[0., -1., 0.], [0., 0., -1.], [1., 0., 0.]]).dot(self.R_camera_fixer_at_car[0:3,0:3].T)

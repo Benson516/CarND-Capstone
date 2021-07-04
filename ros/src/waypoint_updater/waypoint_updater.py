@@ -59,9 +59,7 @@ class WaypointUpdater(object):
         while not rospy.is_shutdown():
             if self.pose and self.base_lane:
                 if self.waypoints_2d and self.waypoint_tree:
-                    # Get closest waypoint
-                    closest_waypoint_idx = self.get_closest_waypoint_idx()
-                    self.publish_waypoints(closest_waypoint_idx)
+                    self.publish_waypoints()
             rate.sleep()
 
     def get_closest_waypoint_idx(self):
@@ -72,8 +70,6 @@ class WaypointUpdater(object):
         # Get "1" closest point's index. Note: return of the query() is (point, idx)
         closest_idx = self.waypoint_tree.query([x,y], 1)[1]
 
-        # print("closest_idx = %d" % closest_idx)
-
         # Check if the closest is ahead or behind the vehicle
         closest_coord = self.waypoints_2d[closest_idx]
         prev_coord = self.waypoints_2d[closest_idx-1]
@@ -83,15 +79,17 @@ class WaypointUpdater(object):
         prev_vect = np.array(prev_coord)
         pose_vect = np.array([x,y])
 
-        val = np.dot(cl_vect-prev_coord, pose_vect-cl_vect)
+        val = np.dot(cl_vect-prev_vect, pose_vect-cl_vect)
 
         if val > 0:
             # The closest is behind the vehicle
             # print("The closest waypoint is behind the vehicle, use the next point.")
             closest_idx = (closest_idx+1) % len(self.waypoints_2d)
+        #
+        print("closest_idx = %d" % closest_idx)
         return closest_idx
 
-    def publish_waypoints(self, closest_idx):
+    def publish_waypoints(self):
         """
         """
         # # 1st version
@@ -112,6 +110,8 @@ class WaypointUpdater(object):
         closest_idx = self.get_closest_waypoint_idx()
         farest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_lane.waypoints[closest_idx:farest_idx]
+        if farest_idx >= len(self.base_lane.waypoints):
+            base_waypoints += self.base_lane.waypoints[:(farest_idx-len(self.base_lane.waypoints)+1)]
 
         if (self.stopline_wp_idx == -1) or (self.stopline_wp_idx >= farest_idx):
             lane.waypoints = base_waypoints
