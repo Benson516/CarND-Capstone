@@ -76,7 +76,9 @@ class TLDetector(object):
         self.waypoint_tree  = None
 
         # Data collection
+        self.tl_data_collection_period = 0.5 # sec.
         self.tl_data_count = 0
+        self.tl_last_collect_stamp = rospy.get_rostime()
         # Camera intrinsic matrix (Ground truth)
         f_camera = 1345.0 # 1.2
         # f_camera = 100
@@ -234,22 +236,37 @@ class TLDetector(object):
                 self.prev_light_loc = None
                 return False
             cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+
+            # Jump through some images
+            #--------------------------#
+            _current_stamp = rospy.get_rostime()
+            if (_current_stamp - self.tl_last_collect_stamp).to_sec() < self.tl_data_collection_period:
+                return light.state
+            # else
+            self.tl_last_collect_stamp = _current_stamp
+            #--------------------------#
+
             # Count the image
             self.tl_data_count += 1
-
             print("--- tl_data_count = %d ---" % self.tl_data_count)
             # Try to get the bounding box
             print("light.pose = \n%s" % light.pose)
             print("self.pose = \n%s" % self.pose)
 
 
-            # Perspective projection
+            # Calculate relative pose
             #---------------------------------#
             # Calculate the relative pose of light at car
             T_rel, R_tl_at_car, t_tl_at_car = self.get_relative_pose(light.pose.pose, self.pose.pose)
             print("R_tl_at_car = \n%s" % R_tl_at_car)
             print("t_tl_at_car = \n%s" % t_tl_at_car)
 
+            # If it's too far, ignore
+            if t_tl_at_car[0] > 100:
+                return light.state
+
+            # Perspective projection
+            #---------------------------------#
             # TODO: Generate the bounding box
             point_at_tl_list = list()
             point_at_tl_list.append([0., 0., 0.])
